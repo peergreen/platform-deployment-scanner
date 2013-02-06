@@ -17,8 +17,7 @@ package com.peergreen.deployment.scanner;
 
 import java.io.File;
 import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -37,11 +36,14 @@ import com.peergreen.deployment.Artifact;
 import com.peergreen.deployment.ArtifactBuilder;
 import com.peergreen.deployment.DeploymentMode;
 import com.peergreen.deployment.DeploymentService;
+import com.peergreen.deployment.monitor.URITracker;
+import com.peergreen.deployment.monitor.URITrackerException;
+import com.peergreen.deployment.tracker.DeploymentServiceTracker;
 
 @Component
-@Provides
+@Provides(specifications=DeploymentServiceTracker.class)
 @Instantiate(name="Directoy scanner monitor")
-public class ScanMonitor extends Thread {
+public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     @Requires
     private DeploymentService deploymentService;
@@ -50,14 +52,15 @@ public class ScanMonitor extends Thread {
     private ArtifactBuilder artifactBuilder;
 
     /**
+     * Needs the file tracker.
+     */
+    @Requires(filter="(scheme=file)")
+    private URITracker fileTracker;
+
+    /**
      * Scan interval before trying to detect new files in some directories.
      */
     private long scanInterval = 5000L;
-
-    /**
-     * Some actions needs to be done on Windows only.
-     */
-    private final static boolean WINDOWS_OS = System.getProperty("os.name").indexOf("win") >= 0;
 
     /**
      * Directories that will be scanned for deploying new artifacts.
@@ -85,14 +88,18 @@ public class ScanMonitor extends Thread {
         this.monitoredDirectories = new LinkedList<File>();
         this.trackedByDeploymentService = new ArrayList<File>();
         this.fileLengths = new HashMap<File, Long>();
-        this.setName("Peergreen Directories Scanner");
     }
 
 
     @Validate
     public void startComponent() {
+        // reset flag
         this.stopThread = false;
-        this.start();
+
+        // Start the thread
+        Thread thread = new Thread(this);
+        thread.setName("Peergreen Directories Scanner");
+        thread.start();
     }
 
     @Invalidate
@@ -110,7 +117,11 @@ public class ScanMonitor extends Thread {
 
         // Add default directory
         if (monitoredDirectories.isEmpty()) {
-            monitoredDirectories.add(new File(System.getProperty("user.dir"), "deploy"));
+            File deployDirectory = new File(System.getProperty("user.dir"), "deploy");
+            if (!deployDirectory.exists()) {
+                deployDirectory.mkdirs();
+            }
+            monitoredDirectories.add(deployDirectory);
         }
 
         for (;;) {
@@ -132,9 +143,6 @@ public class ScanMonitor extends Thread {
 
             // Check new archives/containers to start
             detectNewArchives();
-
-            // Check deleted archives
-            detectDeletedFiles();
 
             // 80% is for waiting
             try {
@@ -172,56 +180,16 @@ public class ScanMonitor extends Thread {
         }
     }
 
-    /**
-     * The windows related method test if the file is complete (any write
-     * operations on the given file are finished).
-     * @param file tested file (regular file only)
-     * @throws IOException if the given file is not completed (only thrown
-     *                     under windows when file is not completed)
-     */
-    private static void checkFileCompleteness(final File file) throws IOException {
-        if (file.isFile()) {
-            // Try to open an input stream on the file
-            // This should throw an exception if the file copy is not finished (Windows only)
-            try (FileInputStream fis = new FileInputStream(file)) {
 
-            }
-        }
-    }
 
     /**
      * Return the file or directory size.
      * @param file a file or directory
      * @return the total file size (files in folders included)
-     * @throws Exception if one of the analyzed files was not completed
+     * @throws URITrackerException if the
      */
-    private static long getFileSize(final File file) throws Exception {
-        if (file.isFile()) {
-            if (WINDOWS_OS) {
-                checkFileCompleteness(file);
-            }
-            return file.length();
-        }
-
-        // Directory case
-        long size = 0;
-        File[] childs = file.listFiles();
-        for (File child : childs) {
-            // Add the size of the child
-            size += getFileSize(child);
-        }
-
-        return size;
-
-    }
-
-    //TODO: maybe that can be done by deployment system that track deleted files too
-    protected void detectDeletedFiles() {
-        for (File file : trackedByDeploymentService) {
-            if (!file.exists()) {
-                trackedByDeploymentService.remove(file);
-            }
-        }
+    protected long getFileSize(final File file) throws URITrackerException {
+        return fileTracker.getLength(file.toURI());
     }
 
     /**
@@ -363,6 +331,30 @@ public class ScanMonitor extends Thread {
      */
     public void setScanInterval(final int scanInterval) {
         this.scanInterval = scanInterval;
+    }
+
+
+    @Override
+    public void onChange(Artifact artifact, DeploymentMode deploymentMode) {
+        // Only UNDEPLOY notification
+        if (deploymentMode != DeploymentMode.UNDEPLOY) {
+            return;
+        }
+
+        // Get file being undeployed
+        URI uri = artifact.uri();
+        if ("file".equals(uri.getScheme())) {
+            return;
+        }
+
+        File artifactFile = new File(uri.getPath());
+
+        // If being tracked, remove it only if file is no longer here
+        if (trackedByDeploymentService.contains(artifactFile) && !artifactFile.exists()) {
+            trackedByDeploymentService.remove(artifactFile);
+        }
+
+
     }
 
 }
