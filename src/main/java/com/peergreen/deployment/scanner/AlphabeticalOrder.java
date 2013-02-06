@@ -21,19 +21,17 @@ import java.util.Comparator;
 /**
  * Sort a list of files by using an alphabetical order.
  * @author Florent BENOIT
- *
  */
 public class AlphabeticalOrder implements Comparator<File> {
 
-        /**
-         * Compare two files.
-         * @param file1 the first file to compare
-         * @param file2 the second file to compare.
-         * @return compare mode between
-         */
-        @Override
-        public int compare(final File file1, final File file2) {
-            return file1.getName().compareToIgnoreCase(file2.getName());
-        }
-
+    /**
+     * Compare two files.
+     * @param file1 the first file to compare
+     * @param file2 the second file to compare.
+     * @return compare mode between
+     */
+    @Override
+    public int compare(final File file1, final File file2) {
+        return file1.getName().compareToIgnoreCase(file2.getName());
     }
+}
