@@ -34,6 +34,7 @@ import org.apache.felix.ipojo.annotations.Validate;
 
 import com.peergreen.deployment.Artifact;
 import com.peergreen.deployment.ArtifactBuilder;
+import com.peergreen.deployment.ArtifactProcessRequest;
 import com.peergreen.deployment.DeploymentMode;
 import com.peergreen.deployment.DeploymentService;
 import com.peergreen.deployment.monitor.URITracker;
@@ -210,7 +211,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
             // Sort the files by names
             Arrays.sort(files, new AlphabeticalOrder());
 
-            List<File> filesToDeploy = new ArrayList<File>();
+            List<File> filesToDeploy = new ArrayList<>();
 
             // analyze each file to detect new modules that are not yet deployed.
             for (File file : files) {
@@ -235,16 +236,19 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
                 return;
             }
 
-
             // Build a list of artifacts that we will send to the service
-            List<Artifact> artifacts = new ArrayList<Artifact>();
+            List<ArtifactProcessRequest> artifactProcessRequests = new ArrayList<>();
             for (File f : filesToDeploy) {
                 // Build artifact
-                artifacts.add(artifactBuilder.build(f.getName(),f.toURI()));
+                Artifact artifact = artifactBuilder.build(f.getName(),f.toURI());
+                ArtifactProcessRequest artifactProcessRequest = new ArtifactProcessRequest();
+                artifactProcessRequest.setDeploymentMode(DeploymentMode.DEPLOY);
+                artifactProcessRequest.setArtifact(artifact);
+                artifactProcessRequests.add(artifactProcessRequest);
             }
 
-            //Now deploy files
-            deploy(artifacts);
+            // Now deploy files
+            deploy(artifactProcessRequests);
 
         }
     }
@@ -253,13 +257,13 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
     /**
      *
      */
-    protected void deploy(List<Artifact> artifacts) {
-        if (!artifacts.isEmpty()) {
-            deploymentService.process(artifacts, DeploymentMode.DEPLOY);
+    protected void deploy(List<ArtifactProcessRequest> artifactProcessRequests) {
+        if (!artifactProcessRequests.isEmpty()) {
+            deploymentService.process(artifactProcessRequests);
 
             // this is now tracked by the deployment service
-            for (Artifact artifact : artifacts) {
-                File f = new File(artifact.uri().getPath());
+            for (ArtifactProcessRequest artifactProcessRequest : artifactProcessRequests) {
+                File f = new File(artifactProcessRequest.getArtifact().uri().getPath());
                 this.trackedByDeploymentService.add(f);
             }
 
