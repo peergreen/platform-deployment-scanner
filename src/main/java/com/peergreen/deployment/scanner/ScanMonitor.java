@@ -241,9 +241,8 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
             for (File f : filesToDeploy) {
                 // Build artifact
                 Artifact artifact = artifactBuilder.build(f.getName(),f.toURI());
-                ArtifactProcessRequest artifactProcessRequest = new ArtifactProcessRequest();
+                ArtifactProcessRequest artifactProcessRequest = new ArtifactProcessRequest(artifact);
                 artifactProcessRequest.setDeploymentMode(DeploymentMode.DEPLOY);
-                artifactProcessRequest.setArtifact(artifact);
                 artifactProcessRequests.add(artifactProcessRequest);
             }
 
