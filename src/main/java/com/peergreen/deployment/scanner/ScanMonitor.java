@@ -24,12 +24,14 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.felix.ipojo.annotations.Bind;
 import org.apache.felix.ipojo.annotations.Component;
 import org.apache.felix.ipojo.annotations.Instantiate;
 import org.apache.felix.ipojo.annotations.Invalidate;
 import org.apache.felix.ipojo.annotations.Provides;
-import org.apache.felix.ipojo.annotations.Requires;
+import org.apache.felix.ipojo.annotations.Unbind;
 import org.apache.felix.ipojo.annotations.Validate;
 
 import com.peergreen.deployment.Artifact;
@@ -41,21 +43,30 @@ import com.peergreen.deployment.monitor.URITracker;
 import com.peergreen.deployment.monitor.URITrackerException;
 import com.peergreen.deployment.tracker.DeploymentServiceTracker;
 
+/**
+ * Checks for files stored in directories <br />
+ * This class checks for bind/unbind on requires attributes as it's using Thread
+ * so fields may be null while checking them in run() method.
+ * @author Florent Benoit
+ */
 @Component
 @Provides(specifications=DeploymentServiceTracker.class)
 @Instantiate(name="Directoy scanner monitor")
 public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
-    @Requires
+    /**
+     * Deployment service.
+     */
     private DeploymentService deploymentService;
 
-    @Requires
+    /**
+     * Artifact builder.
+     */
     private ArtifactBuilder artifactBuilder;
 
     /**
      * Needs the file tracker.
      */
-    @Requires(filter="(scheme=file)")
     private URITracker fileTracker;
 
     /**
@@ -69,9 +80,9 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
     private List<File> monitoredDirectories;
 
     /**
-     * Thread should be stopped.
+     * Boolean that is checked for stopping the loop.
      */
-    private boolean stopThread = false;
+    private final AtomicBoolean stopThread = new AtomicBoolean(false);
 
     /**
      * List of Files that we've already sent to the deployer service.
@@ -95,7 +106,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
     @Validate
     public void startComponent() {
         // reset flag
-        this.stopThread = false;
+        this.stopThread.set(false);
 
         // Start the thread
         Thread thread = new Thread(this);
@@ -105,7 +116,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     @Invalidate
     public void stopComponent() {
-        this.stopThread = true;
+        this.stopThread.set(true);
     }
 
     /**
@@ -126,7 +137,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
         }
 
         for (;;) {
-            if (stopThread) {
+            if (stopThread.get()) {
                 // Stop the thread
                 return;
             }
@@ -190,6 +201,9 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
      * @throws URITrackerException if the
      */
     protected long getFileSize(final File file) throws URITrackerException {
+        if (fileTracker == null) {
+            throw new URITrackerException("No file tracker available");
+        }
         return fileTracker.getLength(file.toURI());
     }
 
@@ -231,7 +245,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
                 filesToDeploy.add(file);
             }
 
-            if (stopThread) {
+            if (stopThread.get()) {
                 // Don't deploy new archives after the reception of a stop order
                 return;
             }
@@ -239,6 +253,10 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
             // Build a list of artifacts that we will send to the service
             List<ArtifactProcessRequest> artifactProcessRequests = new ArrayList<>();
             for (File f : filesToDeploy) {
+                // no builder, continue
+                if (artifactBuilder == null) {
+                    continue;
+                }
                 // Build artifact
                 Artifact artifact = artifactBuilder.build(f.getName(),f.toURI());
                 ArtifactProcessRequest artifactProcessRequest = new ArtifactProcessRequest(artifact);
@@ -246,17 +264,21 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
                 artifactProcessRequests.add(artifactProcessRequest);
             }
 
-            // Now deploy files
-            deploy(artifactProcessRequests);
+            // Now process these files
+            process(artifactProcessRequests);
 
         }
     }
 
 
     /**
-     *
+     * Process the given list of artifacts.
      */
-    protected void deploy(List<ArtifactProcessRequest> artifactProcessRequests) {
+    protected void process(List<ArtifactProcessRequest> artifactProcessRequests) {
+        if (deploymentService == null) {
+            return;
+        }
+
         if (!artifactProcessRequests.isEmpty()) {
             deploymentService.process(artifactProcessRequests);
 
@@ -356,8 +378,36 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
         if (trackedByDeploymentService.contains(artifactFile) && !artifactFile.exists()) {
             trackedByDeploymentService.remove(artifactFile);
         }
+    }
 
+    @Bind(filter="(scheme=file)")
+    public void bindURITracker(URITracker fileTracker) {
+        this.fileTracker = fileTracker;
+    }
 
+    @Unbind
+    public void unbindURITracker(URITracker fileTracker) {
+        this.fileTracker = null;
+    }
+
+    @Bind
+    public void bindArtifactBuilder(ArtifactBuilder artifactBuilder) {
+        this.artifactBuilder = artifactBuilder;
+    }
+
+    @Unbind
+    public void unbindArtifactBuilder(ArtifactBuilder artifactBuilder) {
+        this.artifactBuilder = null;
+    }
+
+    @Bind
+    public void bindDeploymentService(DeploymentService deploymentService) {
+        this.deploymentService = deploymentService;
+    }
+
+    @Unbind
+    public void unbindDeploymentService(DeploymentService deploymentService) {
+        this.deploymentService = null;
     }
 
 }
