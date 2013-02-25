@@ -16,13 +16,19 @@
 package com.peergreen.deployment.scanner;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Comparator;
 
 /**
  * Sort a list of files by using an alphabetical order.
  * @author Florent BENOIT
  */
-public class AlphabeticalOrder implements Comparator<File> {
+public class AlphabeticalOrder implements Serializable, Comparator<File>  {
+
+    /**
+     * Serial version UID.
+     */
+    private static final long serialVersionUID = -716674971240669112L;
 
     /**
      * Compare two files.
