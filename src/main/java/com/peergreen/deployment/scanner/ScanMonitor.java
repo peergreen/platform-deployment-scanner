@@ -111,6 +111,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
         // Start the thread
         Thread thread = new Thread(this);
         thread.setName("Peergreen Directories Scanner");
+        thread.setDaemon(true);
         thread.start();
     }
 
