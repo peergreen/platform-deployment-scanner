@@ -13,6 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package com.peergreen.deployment.scanner;
 
 import java.io.File;
@@ -47,11 +48,12 @@ import com.peergreen.deployment.tracker.DeploymentServiceTracker;
  * Checks for files stored in directories <br />
  * This class checks for bind/unbind on requires attributes as it's using Thread
  * so fields may be null while checking them in run() method.
+ *
  * @author Florent Benoit
  */
 @Component
-@Provides(specifications=DeploymentServiceTracker.class)
-@Instantiate(name="Directoy scanner monitor")
+@Provides(specifications = DeploymentServiceTracker.class)
+@Instantiate(name = "Directory scanner monitor")
 public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     /**
@@ -96,6 +98,11 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     private FileFilter fileFilter;
 
+    /**
+     * Group that will contain the Thread created to run this instance.
+     */
+    private ThreadGroup threadGroup;
+
     public ScanMonitor() {
         this.monitoredDirectories = new LinkedList<File>();
         this.trackedByDeploymentService = new ArrayList<File>();
@@ -109,7 +116,12 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
         this.stopThread.set(false);
 
         // Start the thread
-        Thread thread = new Thread(this);
+        Thread thread;
+        if (threadGroup != null) {
+            thread = new Thread(threadGroup, this);
+        } else {
+            thread = new Thread(this);
+        }
         thread.setName("Peergreen Directories Scanner");
         thread.setDaemon(true);
         thread.start();
@@ -137,7 +149,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
             monitoredDirectories.add(deployDirectory);
         }
 
-        for (;;) {
+        for (; ; ) {
             if (stopThread.get()) {
                 // Stop the thread
                 return;
@@ -194,9 +206,9 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
     }
 
 
-
     /**
      * Return the file or directory size.
+     *
      * @param file a file or directory
      * @return the total file size (files in folders included)
      * @throws URITrackerException if the
@@ -259,7 +271,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
                     continue;
                 }
                 // Build artifact
-                Artifact artifact = artifactBuilder.build(f.getName(),f.toURI());
+                Artifact artifact = artifactBuilder.build(f.getName(), f.toURI());
                 ArtifactProcessRequest artifactProcessRequest = new ArtifactProcessRequest(artifact);
                 artifactProcessRequest.setDeploymentMode(DeploymentMode.DEPLOY);
                 artifactProcessRequests.add(artifactProcessRequest);
@@ -294,6 +306,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     /**
      * Check if the file length has changed.
+     *
      * @param file The given file
      * @return True if the file length has changed
      */
@@ -329,6 +342,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     /**
      * Sets the list of directories that are tracked.
+     *
      * @param directories list of directories that are tracked.
      */
     public void setMonitoredDirectories(final List<File> monitoredDirectories) {
@@ -337,6 +351,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     /**
      * Add a directory to the list of directories that are tracked.
+     *
      * @param directory the directory to add
      */
     public void addMonitoredDirectory(final File monitoredDirectory) {
@@ -345,6 +360,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     /**
      * Remove a directory to the list of directories to monitor.
+     *
      * @param directory the directory to remove
      */
     public void removeDirectory(final File monitoredDirectory) {
@@ -353,6 +369,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
     /**
      * Set the scan interval between each directory scan.
+     *
      * @param scanInterval value to set
      */
     public void setScanInterval(final int scanInterval) {
@@ -381,7 +398,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
         }
     }
 
-    @Bind(filter="(scheme=file)")
+    @Bind(filter = "(scheme=file)")
     public void bindURITracker(URITracker fileTracker) {
         this.fileTracker = fileTracker;
     }
@@ -409,6 +426,11 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
     @Unbind
     public void unbindDeploymentService(DeploymentService deploymentService) {
         this.deploymentService = null;
+    }
+
+    @Bind(filter = "(group.name=peergreen)")
+    public void bindThreadGroup(ThreadGroup threadGroup) {
+        this.threadGroup = threadGroup;
     }
 
 }
