@@ -84,4 +84,20 @@
     <developerConnection>scm:git:https://forge.peergreen.com/git/git/platform/deployment-scanner.git</developerConnection>
     <url>https://forge.peergreen.com/git/summary/?r=platform/deployment-scanner.git</url>
   </scm>
+
+  <repositories>
+    <repository>
+      <id>peergreen.release</id>
+      <name>Peergreen Release Nexus</name>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <url>https://forge.peergreen.com/nexus/content/repositories/releases/</url>
+      <layout>default</layout>
+    </repository>
+  </repositories>
+
 </project>
