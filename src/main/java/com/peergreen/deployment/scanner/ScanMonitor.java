@@ -386,7 +386,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
         // Get file being undeployed
         URI uri = artifact.uri();
-        if ("file".equals(uri.getScheme())) {
+        if (!"file".equals(uri.getScheme())) {
             return;
         }
 
