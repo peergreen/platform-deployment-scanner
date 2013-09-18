@@ -249,6 +249,11 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
                     continue;
                 }
 
+                // File doesn't exist (for symlink)
+                if (!file.exists()) {
+                    continue;
+                }
+
                 // File length has changed: maybe a file copy that is not yet completed.
                 if (fileLengthHasChanged(file)) {
                     continue;
