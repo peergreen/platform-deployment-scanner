@@ -40,8 +40,10 @@ import com.peergreen.deployment.ArtifactBuilder;
 import com.peergreen.deployment.ArtifactProcessRequest;
 import com.peergreen.deployment.DeploymentMode;
 import com.peergreen.deployment.DeploymentService;
+import com.peergreen.deployment.model.ArtifactModel;
 import com.peergreen.deployment.monitor.URITracker;
 import com.peergreen.deployment.monitor.URITrackerException;
+import com.peergreen.deployment.report.ArtifactStatusReport;
 import com.peergreen.deployment.tracker.DeploymentServiceTracker;
 
 /**
@@ -385,7 +387,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
 
 
     @Override
-    public void onChange(Artifact artifact, DeploymentMode deploymentMode) {
+    public void beforeProcessing(Artifact artifact, DeploymentMode deploymentMode) {
         // Only UNDEPLOY notification
         if (deploymentMode != DeploymentMode.UNDEPLOY) {
             return;
@@ -438,6 +440,13 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
     @Bind(filter = "(group.name=peergreen)")
     public void bindThreadGroup(ThreadGroup threadGroup) {
         this.threadGroup = threadGroup;
+    }
+
+
+    @Override
+    public void afterProcessing(ArtifactModel artifactModel, DeploymentMode deploymentMode,
+            ArtifactStatusReport artifactStatusReport) {
+
     }
 
 }
