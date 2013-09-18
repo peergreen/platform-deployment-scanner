@@ -283,7 +283,9 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
             }
 
             // Now process these files
-            process(artifactProcessRequests);
+            if (artifactProcessRequests.size() > 0) {
+                process(artifactProcessRequests);
+            }
 
         }
     }
