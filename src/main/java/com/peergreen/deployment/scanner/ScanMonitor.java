@@ -245,6 +245,12 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
             // analyze each file to detect new modules that are not yet deployed.
             for (File file : files) {
 
+                // Ignore hidden files
+                if (file.getName().startsWith(".")) {
+                    continue;
+                }
+
+
                 // Already tracked ?
                 if (trackedByDeploymentService.contains(file)) {
                     // yes, then check other files
