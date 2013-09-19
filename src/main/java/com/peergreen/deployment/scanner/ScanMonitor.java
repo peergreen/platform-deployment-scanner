@@ -443,7 +443,7 @@ public class ScanMonitor implements Runnable, DeploymentServiceTracker {
         this.deploymentService = null;
     }
 
-    @Bind(filter = "(group.name=peergreen)")
+    @Bind(proxy=false, filter = "(group.name=peergreen)")
     public void bindThreadGroup(ThreadGroup threadGroup) {
         this.threadGroup = threadGroup;
     }
