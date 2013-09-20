@@ -20,14 +20,14 @@
   <groupId>com.peergreen.deployment.scanner</groupId>
   <artifactId>peergreen-scanner</artifactId>
   <packaging>bundle</packaging>
-  <version>1.0.2-SNAPSHOT</version>
+  <version>1.0.2</version>
   <name>Peergreen deployment scanner</name>
 
   <scm>
     <connection>scm:git:https://forge.peergreen.com/git/git/platform/deployment-scanner.git</connection>
     <developerConnection>scm:git:https://forge.peergreen.com/git/git/platform/deployment-scanner.git</developerConnection>
     <url>https://forge.peergreen.com/git/summary/?r=platform/deployment-scanner.git</url>
-    <tag>HEAD</tag>
+    <tag>PEERGREEN_SCANNER_1_0_2</tag>
   </scm>
 
   <build>
